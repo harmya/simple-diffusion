@@ -20,7 +20,6 @@ def sample_image_with_steps(
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     model.eval()
-    
     betas = torch.linspace(beta_start, beta_end, T_steps)
     alphas = 1.0 - betas
     alpha_bars = torch.cumprod(alphas, dim=0)
@@ -29,34 +28,24 @@ def sample_image_with_steps(
     alphas = alphas.to(device)
     alpha_bars = alpha_bars.to(device)
     
-    
     @torch.no_grad()
     def p_sample(model, x_t, t, t_index):
         betat = betas[t].to(device)
         alpha_t = alphas[t].to(device)
         alpha_bar_t = alpha_bars[t].to(device)
-        
- 
         alpha_bar_t_1 = alpha_bars[t-1].to(device) if t > 0 else alpha_bars[0].to(device)
-        
-
         eps_pred = model(x_t)
-        
-
         mu_t = (1.0 / torch.sqrt(alpha_t)) * (x_t - (1.0 - alpha_t) / torch.sqrt(1.0 - alpha_bar_t) * eps_pred)
-        
-
+    
         if t_index > 0:
             z = torch.randn_like(x_t)
         else:
             z = 0
-            
         sigma_t = torch.sqrt(betat)
         x_t_minus_1 = mu_t + sigma_t * z
         return x_t_minus_1
     
     x = torch.randn((1, *img_size), device=device)
-    
     snapshots = {}
     if T_steps in snapshot_steps:
         snapshots[T_steps] = x.clone()
@@ -66,7 +55,6 @@ def sample_image_with_steps(
         t = torch.tensor([t_index], device=device, dtype=torch.long)
         x = p_sample(model, x, t, t_index)
         
-
         if t_index in snapshot_steps:
             snapshot_x = x.clone()
             snapshot_x = snapshot_x.clamp(-1, 1)
