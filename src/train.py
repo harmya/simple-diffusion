@@ -8,7 +8,7 @@ from torchvision import datasets, transforms
 
 from u_net import SimpleUnet
 from noise_scheduler import NoiseScheduler
-from infer import sample_images
+from infer import sample_image_with_steps
 import modal
 
 image = modal.Image.debian_slim(python_version="3.11").pip_install("torch", "torchvision", "numpy", "tqdm", "matplotlib")
@@ -99,7 +99,7 @@ def train():
         
         if epoch % 10 == 0:
             torch.save(model.state_dict(), f"/diffusion-model-outputs/model_{epoch}.pt")
-            sample_images(model, f"/diffusion-model-outputs/samples_{epoch}.png", num_samples=4, img_size=(1, IMAGE_SIZE, IMAGE_SIZE), T_steps=NUM_TIMESTEPS, beta_start=BETA_START, beta_end=BETA_END, device=DEVICE)
+            sample_image_with_steps(model, f"/diffusion-model-outputs/samples_{epoch}.png", num_samples=4, img_size=(1, IMAGE_SIZE, IMAGE_SIZE), T_steps=NUM_TIMESTEPS, beta_start=BETA_START, beta_end=BETA_END, device=DEVICE)
             print(f"Saved model and samples for epoch {epoch+1}")
     
 
