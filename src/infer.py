@@ -80,12 +80,12 @@ def sample_image_with_steps(
 if __name__ == "__main__":
 
     model = SimpleUnet()
-    model.load_state_dict(torch.load("../models/model_10.pt", map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load("models/model_10.pt", map_location=torch.device('cpu')))
     model.eval()
     
     sample_image_with_steps(
         model,
-        "../examples/diffusion_steps.png",
+        "examples/diffusion_steps.png",
         img_size=(1, 64, 64),
         T_steps=1000,
         snapshot_steps=[1000, 750, 500, 250, 0],

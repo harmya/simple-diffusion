@@ -126,4 +126,3 @@ if __name__ == "__main__":
     plt.subplot(1, 3, 3)
     plt.imshow(x_t_plus_1_150.permute(1, 2, 0))
     plt.show()
-
