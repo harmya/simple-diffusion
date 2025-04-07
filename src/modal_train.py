@@ -9,8 +9,13 @@ from torchvision import datasets, transforms
 from u_net import SimpleUnet
 from noise_scheduler import NoiseScheduler
 from infer import sample_image_with_steps
+import modal
 
-# Constants
+image = modal.Image.debian_slim(python_version="3.11").pip_install("torch", "torchvision", "numpy", "tqdm", "matplotlib")
+app = modal.App(name="diffusion-model")
+output_volume = modal.Volume.from_name("diffusion-model-outputs")
+data_volume = modal.Volume.from_name("data")
+
 BATCH_SIZE = 64
 EPOCHS = 30
 LEARNING_RATE = 1e-4
@@ -18,13 +23,11 @@ NUM_TIMESTEPS = 1000
 BETA_START = 1e-4
 BETA_END = 0.02
 IMAGE_SIZE = 64
-SAVE_DIR = "outputs"
+SAVE_DIR = "diffusion-model-outputs"
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+@app.function(image=image, volumes={"/diffusion-model-outputs": output_volume}, gpu="H100", timeout=3600)
 def train():
-    # Create output directory if it doesn't exist
-    os.makedirs(SAVE_DIR, exist_ok=True)
-    
     print(f"Using device: {DEVICE}")
     scheduler = NoiseScheduler(
         beta_start=BETA_START,
@@ -39,7 +42,7 @@ def train():
     ])
     
     dataset = datasets.MNIST(
-        root="./data",
+        root="/data",
         train=True,
         download=True,
         transform=transform
@@ -54,6 +57,7 @@ def train():
     
     model = SimpleUnet(in_channels=1, out_channels=1).to(DEVICE)
     model.train()
+    
     
     optimizer = Adam(model.parameters(), lr=LEARNING_RATE)
     criterion = torch.nn.MSELoss()
@@ -94,18 +98,11 @@ def train():
         print(f"Epoch {epoch+1} complete. Average loss: {avg_loss:.4f}")
         
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), f"{SAVE_DIR}/model_{epoch}.pt")
-            sample_image_with_steps(
-                model, 
-                f"{SAVE_DIR}/samples_{epoch}.png", 
-                img_size=(1, IMAGE_SIZE, IMAGE_SIZE), 
-                T_steps=NUM_TIMESTEPS, 
-                snapshot_steps=[1000, 750, 500, 250, 0],
-                beta_start=BETA_START, 
-                beta_end=BETA_END, 
-                device=DEVICE
-            )
+            torch.save(model.state_dict(), f"/diffusion-model-outputs/model_{epoch}.pt")
+            sample_image_with_steps(model, f"/diffusion-model-outputs/samples_{epoch}.png", num_samples=4, img_size=(1, IMAGE_SIZE, IMAGE_SIZE), T_steps=NUM_TIMESTEPS, beta_start=BETA_START, beta_end=BETA_END, device=DEVICE)
             print(f"Saved model and samples for epoch {epoch+1}")
+    
 
-if __name__ == "__main__":
-    train()
+@app.local_entrypoint()
+def main():
+    train.remote()
